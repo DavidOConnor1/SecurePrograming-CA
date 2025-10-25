@@ -12,9 +12,9 @@ public class UserManager {
         this.filename = filename;
     }
 
-    public void storeUsers(map<String, AuthSystem.User> users) throws IOException
+    public void storeUsers(Map<String, AuthSystem.User> users) throws IOException
     {//open method
-        try(ObjectOutputStream objs = new ObjectOutputStream(new FilterOutputStream(filename))){
+        try(ObjectOutputStream objs = new ObjectOutputStream(new FileOutputStream(filename))){
             objs.writeObject(users);
         }//close try
     }//close method
@@ -26,5 +26,10 @@ public class UserManager {
         {
             return new HashMap<>(); //no file created yet, will return an empty map
         }
-    }
+
+        try(ObjectInputStream objInput = new ObjectInputStream(new FileInputStream(filename)))
+        {//open try
+            return (Map<String, AuthSystem.User>) objInput.readObject();
+        }//close try
+    }//close method
 }

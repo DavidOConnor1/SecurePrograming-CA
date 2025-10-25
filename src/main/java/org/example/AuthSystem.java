@@ -62,6 +62,14 @@ public class AuthSystem {
         return true;
     }
 
+    public Map<String, User> getUsers() {
+        return users;
+    }
+
+    public void setUsers(Map<String, User> loadedUsers) {
+        this.users = loadedUsers;
+    }
+
     /**
      * Authenticates a user.
      * @return Session ID on success, null on failure.
@@ -83,10 +91,7 @@ public class AuthSystem {
             user.loginAttempts++;
             return null;
         }
-        if(user.loginAttempts == 3){
-            System.out.println("Reached Max Attempts");
-            system.exit(0);
-        }
+
     }
 
     /**
