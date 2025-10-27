@@ -5,17 +5,19 @@ package org.example;
 
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-import org.example.AuthUtils;
 
 public class AuthSystem {
     // In-memory "database" of users
-    private Map<String, User> users = new HashMap<>();
-    private UserManager storage;
-    public static final String DUMMY_HASH = AuthUtils.hash("dummy_password");
-    private static final int max_login_attempts =3;
+    private Map<String, User> users; //intializing users
+    private Map<String, LoginSession> sessions = new ConcurrentHashMap<>(); //intializing login sessions
+    private UserManager storage; //intializing storage
+    public static final String DUMMY_HASH = AuthUtils.hash("dummy_password"); //intializing and defining dummy account
+    private static final int max_login_attempts =3; //sets max limit for logins
     private static final long lock_out_time = 60*1000; //1minute lock
 
 
@@ -32,7 +34,8 @@ public class AuthSystem {
         }
     }
 
-    static class User implements java.io.Serializable {
+    static class User implements Serializable {
+        private static final long serialVersionUID = 1L; //unique id for serialization
         String password;
         int loginAttempts = 0; //tracking user login attempts
         long lockUntil =0;
@@ -71,8 +74,18 @@ public class AuthSystem {
      * Authenticates a user.
      * @return Session ID on success, null on failure.
      */
-    public String login(String username, String password)
+    public String login(String username, String password, String sessionId)
     {//open method
+        //creates or retrives session tracker
+        LoginSession logsesh = sessions.computeIfAbsent(sessionId, k -> new LoginSession());
+
+        if (logsesh.lockedOut())
+        {
+            System.out.println("Too many failed attempts, try again later");
+            return null;
+        }
+
+
         // Check if user exists
         User user = users.get(username);
         String hashToCheck = (user != null)? user.password : DUMMY_HASH;
