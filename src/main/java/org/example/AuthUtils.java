@@ -12,7 +12,7 @@ import java.util.Base64;
 public class AuthUtils
 {//open class
 
-    public String hash(String password)
+    public static String hash(String password)
     {//open method
         Argon2BytesGenerator generator = new Argon2BytesGenerator();
         byte[] passwordBytes = password.getBytes(StandardCharsets.UTF_8);
@@ -56,7 +56,15 @@ public class AuthUtils
                     .withParallelism(4)
                     .withSalt(salt)
                     .build();
-        }//close
+
+            generator.init(params);
+            generator.generateBytes(password.getBytes(StandardCharsets.UTF_8), computedHash);
+            return constantTimeEquals(expectedHash, computedHash); //bytes constant time equals
+        }//close try
+        catch (Exception e)
+        {//open catch
+            throw new RuntimeException(e);
+        }//close catch
     }//close method
 
 

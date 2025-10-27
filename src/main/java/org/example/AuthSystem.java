@@ -56,20 +56,25 @@ public class AuthSystem {
     {//open method
         // Check if user exists
         User user = users.get(username);
-        String storedPassword = (user != null) ? user.password : "dummy_password1234";
 
-        boolean authenticated = AuthUtils.constantTimeEquals(storedPassword, password);
+        if(user == null)
+        {
+            try{Thread.sleep(200);} catch (InterruptedException ignored) {}
+            return null;
+        }
+
+        boolean authenticated = AuthUtils.verifyPassword(password, user.password);
 
         try { Thread.sleep(200);} catch (InterruptedException ignored) {}
 
-        if(user !=null && authenticated)
+        if(authenticated)
         { //open if
             user.loginAttempts = 0;
             return "session_" + username + "_"+ System.currentTimeMillis();
         }//close if
         else
         {//open else
-            if(user != null) user.loginAttempts++;
+            user.loginAttempts++;
             return null;
        }//close else
     }//close method
