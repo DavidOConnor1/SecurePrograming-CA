@@ -74,50 +74,58 @@ public class AuthSystem {
      * Authenticates a user.
      * @return Session ID on success, null on failure.
      */
-    public String login(String username, String password, String sessionId)
-    {//open method
-        //creates or retrives session tracker
+    public String login(String username, String password, String sessionId) {
+        // Create or retrieve session tracker for this sessionId
         LoginSession logsesh = sessions.computeIfAbsent(sessionId, k -> new LoginSession());
 
-        if (logsesh.lockedOut())
-        {
+        // Check if session is locked (for brute-force prevention)
+        if (logsesh.lockedOut()) {
             System.out.println("Too many failed attempts, try again later");
             return null;
         }
 
-
-        // Check if user exists
+        // Fetch the user (may be null)
         User user = users.get(username);
-        String hashToCheck = (user != null)? user.password : DUMMY_HASH;
 
-        //Check if the account is locked
-        if (user != null && System.currentTimeMillis() < user.lockUntil)
-        {//open if
-            System.out.println("Account Temporarily locked. Come back Later");
-            return null;
-        } //close if
-
+        // Always use a hash to avoid timing attacks
+        String hashToCheck = (user != null) ? user.password : DUMMY_HASH;
         boolean authenticated = AuthUtils.verifyPassword(password, hashToCheck);
 
-        if(authenticated && user !=null)
-        { //open if
-            user.loginAttempts = 0;
-            return "session_" + username + "_"+ System.currentTimeMillis();
-        }//close if
-        else
-        {//open else
-            if (user != null) { //open if
+        // Check if the real user's account is locked
+        if (user != null && System.currentTimeMillis() < user.lockUntil) {
+            System.out.println("Account temporarily locked. Come back later");
+            return null;
+        }
+
+        if (authenticated && user != null) {
+            // Successful login for real user
+            logsesh.resetAttempts();        // reset session attempts
+            user.loginAttempts = 0;         // reset user attempts
+            return "session_" + username + "_" + System.currentTimeMillis();
+        } else {
+            // Failed login (real or dummy)
+            logsesh.incrementFailedAttempts();
+
+            // Lock session if max attempts reached
+            if (logsesh.getAttempts() >= max_login_attempts) {
+                logsesh.lock(lock_out_time);
+                System.out.println("Too many failed attempts, try again later");
+            }
+
+            // Lock the real user if max attempts reached
+            if (user != null) {
                 user.loginAttempts++;
-                if (user.loginAttempts >= max_login_attempts)
-                {//open if
+                if (user.loginAttempts >= max_login_attempts) {
                     user.lockUntil = System.currentTimeMillis() + lock_out_time;
-                    user.loginAttempts =0; //resets after locking
-                    System.out.println("too many failed attempts. Locked out of system for 1minute");
-                }//close if
-            }//close if
-            return null; //general failure
-       }//close else
-    }//close method
+                    user.loginAttempts = 0; // reset after locking
+                    System.out.println("Too many failed attempts. Account locked for 1 minute");
+                }
+            }
+
+            return null; // general failure
+        }
+    }
+
 
     public Map<String, User> getUsers() {
         return users;
