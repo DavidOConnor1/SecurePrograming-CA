@@ -10,11 +10,12 @@ import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
 import org.bouncycastle.crypto.params.Argon2Parameters;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import org.example.AuthUtils;
 
 public class AuthSystem {
     // In-memory "database" of users
     private Map<String, User> users = new HashMap<>();
-
+    private final AuthUtils utility = new AuthUtils();
 
     static class User {
         String password; // Stored in plain text
@@ -25,30 +26,7 @@ public class AuthSystem {
         }
     }
 
-    public String hash(String password) {
-        Argon2BytesGenerator generator = new Argon2BytesGenerator();
-        byte[] passwordBytes = password.getBytes(StandardCharsets.UTF_8);
-        //SaltGeneration
-        SecureRandom random = new SecureRandom();
-        byte[] salt = new byte[16]; // 16-byte salt
-        random.nextBytes(salt);
 
-        byte[] hash = new byte[32]; // 32-byte hash
-
-        // Setting Argon2 Parameters
-        Argon2Parameters.Builder builder = new Argon2Parameters.Builder();
-        builder.withIterations(3)
-                .withMemoryAsKB(16 * 1024)
-                .withParallelism(4)
-                .withSalt(salt); // ✅ corrected casing
-
-        Argon2Parameters parameters = builder.build();
-
-        generator.init(parameters);
-        generator.generateBytes(passwordBytes, hash);
-
-        return Base64.getEncoder().encodeToString(salt) + ":" + Base64.getEncoder().encodeToString(hash);
-    }
     /**
      * Registers a new user.
      * @return true if successful, false if user exists.
@@ -74,25 +52,27 @@ public class AuthSystem {
      * Authenticates a user.
      * @return Session ID on success, null on failure.
      */
-    public String login(String username, String password) {
+    public String login(String username, String password)
+    {//open method
         // Check if user exists
-        if (!users.containsKey(username)) {
-            return null; // Early return reveals valid users
-        }
-
         User user = users.get(username);
+        String storedPassword = (user != null) ? user.password : "dummy_password1234";
 
-        // Check password (vulnerable to timing attack)
-        if (user.password.equals(password)) {
-            user.loginAttempts = 0; // Reset on success
-            // Generate a simple session token
-            return "session_" + username + "_" + System.currentTimeMillis();
-        } else {
-            user.loginAttempts++;
+        boolean authenticated = AuthUtils.constantTimeEquals(storedPassword, password);
+
+        try { Thread.sleep(200);} catch (InterruptedException ignored) {}
+
+        if(user !=null && authenticated)
+        { //open if
+            user.loginAttempts = 0;
+            return "session_" + username + "_"+ System.currentTimeMillis();
+        }//close if
+        else
+        {//open else
+            if(user != null) user.loginAttempts++;
             return null;
-        }
-
-    }
+       }//close else
+    }//close method
 
     /**
      * Checks if a session token is valid.
