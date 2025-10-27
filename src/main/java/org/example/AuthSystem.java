@@ -19,6 +19,8 @@ public class AuthSystem {
     public static final String DUMMY_HASH = AuthUtils.hash("dummy_password"); //intializing and defining dummy account
     private static final int max_login_attempts =3; //sets max limit for logins
     private static final long lock_out_time = 60*1000; //1minute lock
+    private static final Map<String, SessionInfo> activeSessions = new HashMap<>(); // sessionToken -> username
+    private static final long session_length = 30*60*1000;
 
 
     public AuthSystem(UserManager storage) {
@@ -84,12 +86,12 @@ public class AuthSystem {
             return null;
         }
 
-        // Fetch the user (may be null)
+        // Fetch the user (maybe null)
         User user = users.get(username);
 
-        // Always use a hash to avoid timing attacks
+        // Used to avoid timing attacks.
         String hashToCheck = (user != null) ? user.password : DUMMY_HASH;
-        boolean authenticated = AuthUtils.verifyPassword(password, hashToCheck);
+        boolean authenticated = AuthUtils.verifyPassword(password, hashToCheck); //checks the password and the fake password against the verification
 
         // Check if the real user's account is locked
         if (user != null && System.currentTimeMillis() < user.lockUntil) {
@@ -101,7 +103,18 @@ public class AuthSystem {
             // Successful login for real user
             logsesh.resetAttempts();        // reset session attempts
             user.loginAttempts = 0;         // reset user attempts
-            return "session_" + username + "_" + System.currentTimeMillis();
+
+            String sessionToken = SessionGenerator.generateSessionToken();
+            activeSessions.put(sessionToken, new SessionInfo(username));
+
+            //clarifies successful token
+            if (isSessionValid(sessionToken))
+            {
+                System.out.println("Session created and Token is valid");
+                System.out.println("Your Session Token "+sessionToken);
+            }
+
+            return sessionToken;
         } else {
             // Failed login (real or dummy)
             logsesh.incrementFailedAttempts();
@@ -114,7 +127,8 @@ public class AuthSystem {
 
             // Lock the real user if max attempts reached
             if (user != null) {
-                user.loginAttempts++;
+                user.loginAttempts++; //increment the counter
+                //when login attempts reach max attempts, lock out user
                 if (user.loginAttempts >= max_login_attempts) {
                     user.lockUntil = System.currentTimeMillis() + lock_out_time;
                     user.loginAttempts = 0; // reset after locking
@@ -137,6 +151,17 @@ public class AuthSystem {
      * Checks if a session token is valid.
      */
     public boolean isSessionValid(String sessionToken) {
-        return sessionToken != null && sessionToken.startsWith("session_");
+        SessionInfo sessionInfo = activeSessions.get(sessionToken);
+        if(sessionInfo == null) return false;
+
+        long current_session = System.currentTimeMillis() - sessionInfo.getCreatedAt();
+        if (current_session > session_length)
+        {
+            activeSessions.remove(sessionToken);
+            return false;
+        }
+
+        return true;
+
     }
 }
