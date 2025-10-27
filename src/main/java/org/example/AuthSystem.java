@@ -111,7 +111,7 @@ public class AuthSystem {
             if (isSessionValid(sessionToken))
             {
                 System.out.println("Session created and Token is valid");
-                System.out.println("Your Session Token "+sessionToken);
+
             }
 
             return sessionToken;

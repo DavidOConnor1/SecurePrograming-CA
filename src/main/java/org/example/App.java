@@ -61,7 +61,7 @@ public class App {
                     String session = controls.login(name, pass,tempSessionId);
 
                     if (session != null) {//open if
-                        System.out.println("Login Successful! Welcome " + name + "Your Session ID is" + session); //ID provided is a new session ID
+                        System.out.println("Login Successful! Welcome " + name + " Your Session ID is " + session); //ID provided is a new session ID
                         loggedIn = true; //breaks loop
                     }//close if
                     else { //open else
