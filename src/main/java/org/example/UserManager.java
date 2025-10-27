@@ -12,6 +12,8 @@ public class UserManager {
         this.filename = filename;
     }
 
+
+
     public void storeUsers(Map<String, AuthSystem.User> users) throws IOException
     {//open method
         try(ObjectOutputStream objs = new ObjectOutputStream(new FileOutputStream(filename))){

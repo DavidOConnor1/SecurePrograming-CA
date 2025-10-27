@@ -3,23 +3,39 @@ package org.example;
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 
-import java.security.SecureRandom;
+
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
-import org.bouncycastle.crypto.params.Argon2Parameters;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+
 import org.example.AuthUtils;
 
 public class AuthSystem {
     // In-memory "database" of users
     private Map<String, User> users = new HashMap<>();
-    private final AuthUtils utility = new AuthUtils();
+    private UserManager storage;
+    public static final String DUMMY_HASH = AuthUtils.hash("dummy_password");
+    private static final int max_login_attempts =3;
+    private static final long lock_out_time = 60*1000; //1minute lock
 
-    static class User {
-        String password; // Stored in plain text
-        int loginAttempts = 0;
+
+    public AuthSystem(UserManager storage) {
+        this.storage = storage;
+
+        // Load existing users at startup
+        try {
+            this.users = storage.loadUsers();
+            System.out.println("Users have been successfully loaded");
+        } catch (IOException | ClassNotFoundException e) {
+            this.users = new HashMap<>();
+            System.out.println("No existing users found. Starting fresh.");
+        }
+    }
+
+    static class User implements java.io.Serializable {
+        String password;
+        int loginAttempts = 0; //tracking user login attempts
+        long lockUntil =0;
 
         User(String password) {
             this.password = password;
@@ -37,16 +53,19 @@ public class AuthSystem {
         }
 
         users.put(username, new User(password));
+
+        // Save immediately after adding a user
+        try {
+            storage.storeUsers(users);
+        } catch (IOException e) {
+            System.out.println("Error saving user data: " + e.getMessage());
+            return false;
+        }
+
         return true;
-    }
+    }//end method
 
-    public Map<String, User> getUsers() {
-        return users;
-    }
 
-    public void setUsers(Map<String, User> loadedUsers) {
-        this.users = loadedUsers;
-    }
 
     /**
      * Authenticates a user.
@@ -56,28 +75,42 @@ public class AuthSystem {
     {//open method
         // Check if user exists
         User user = users.get(username);
+        String hashToCheck = (user != null)? user.password : DUMMY_HASH;
 
-        if(user == null)
-        {
-            try{Thread.sleep(200);} catch (InterruptedException ignored) {}
+        //Check if the account is locked
+        if (user != null && System.currentTimeMillis() < user.lockUntil)
+        {//open if
+            System.out.println("Account Temporarily locked. Come back Later");
             return null;
-        }
+        } //close if
 
-        boolean authenticated = AuthUtils.verifyPassword(password, user.password);
+        boolean authenticated = AuthUtils.verifyPassword(password, hashToCheck);
 
-        try { Thread.sleep(200);} catch (InterruptedException ignored) {}
-
-        if(authenticated)
+        if(authenticated && user !=null)
         { //open if
             user.loginAttempts = 0;
             return "session_" + username + "_"+ System.currentTimeMillis();
         }//close if
         else
         {//open else
-            user.loginAttempts++;
-            return null;
+            if (user != null) { //open if
+                user.loginAttempts++;
+                if (user.loginAttempts >= max_login_attempts)
+                {//open if
+                    user.lockUntil = System.currentTimeMillis() + lock_out_time;
+                    user.loginAttempts =0; //resets after locking
+                    System.out.println("too many failed attempts. Locked out of system for 1minute");
+                }//close if
+            }//close if
+            return null; //general failure
        }//close else
     }//close method
+
+    public Map<String, User> getUsers() {
+        return users;
+    }
+
+
 
     /**
      * Checks if a session token is valid.

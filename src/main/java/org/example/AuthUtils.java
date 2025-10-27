@@ -24,11 +24,12 @@ public class AuthUtils
         byte[] hash = new byte[32]; // 32-byte hash
 
         // Setting Argon2 Parameters
-        Argon2Parameters.Builder builder = new Argon2Parameters.Builder();
+        Argon2Parameters.Builder builder = new Argon2Parameters.Builder(Argon2Parameters.ARGON2_id);
         builder.withIterations(3)
                 .withMemoryAsKB(16 * 1024)
                 .withParallelism(4)
-                .withSalt(salt); // ✅ corrected casing
+                .withSalt(salt);
+
 
         Argon2Parameters parameters = builder.build();
 
@@ -68,20 +69,7 @@ public class AuthUtils
     }//close method
 
 
-    public static boolean constantTimeEquals(String a, String b)
-    {
-        if(a == null || b == null) {
-            return false;
-        }
-        if(a.length() != b.length()) return false;
 
-        int result =0;
-        for (int i=0; i<a.length(); i++)
-        {//open for
-            result |= a.charAt(i) ^ b.charAt(i);
-        }//close for
-        return result == 0;
-    }//close method
 
     public static boolean constantTimeEquals(byte[] a, byte[] b)
     {//open method

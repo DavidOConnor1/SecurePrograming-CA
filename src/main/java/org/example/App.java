@@ -4,21 +4,12 @@ import java.io.IOException;
 import java.util.Scanner;
 
 public class App {
-    private static AuthSystem controls = new AuthSystem();
     private static UserManager storage = new UserManager("db.dat");
+    private static AuthSystem controls = new AuthSystem(storage);
     private static Scanner input = new Scanner(System.in);
 
     public static void main(String[] args)
     {//open main
-
-        try
-        {//open try
-            controls.setUsers(storage.loadUsers());
-        } //close try
-        catch(IOException | ClassNotFoundException e)
-        {//open catch
-            System.out.println("No existing users. Starting Fresh");
-        }//close catch
 
         System.out.println("Select from the following choices \n1.Sign Up \n2.Login");
 
