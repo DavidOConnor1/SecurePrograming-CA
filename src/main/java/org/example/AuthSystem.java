@@ -22,23 +22,23 @@ public class AuthSystem {
     private static final Map<String, SessionInfo> activeSessions = new HashMap<>(); // sessionToken -> username
     private static final long session_length = 30*60*1000;
 
-
+    //calls the usermanager classs
     public AuthSystem(UserManager storage) {
-        this.storage = storage;
+        this.storage = storage; //intializes the storage
 
         // Load existing users at startup
         try {
-            this.users = storage.loadUsers();
-            System.out.println("Users have been successfully loaded");
+            this.users = storage.loadUsers();// pulls the users from storage
+            System.out.println("Users have been successfully loaded"); //gives a message to the user to let them know users are loaded
         } catch (IOException | ClassNotFoundException e) {
-            this.users = new HashMap<>();
-            System.out.println("No existing users found. Starting fresh.");
-        }
-    }
+            this.users = new HashMap<>(); //creates a new hashmap if there is no .dat file
+            System.out.println("No existing users found. Starting fresh."); //notifies the user it is creating a new .dat file to store users
+        }//end catch
+    }//end method
 
     static class User implements Serializable {
-        private static final long serialVersionUID = 1L; //unique id for serialization
-        String password;
+        private static final long serialVersionUID = 1L; //unique id for serialization for storing the accounts in the .dat file
+        String password; //formats the user class to have a password (which is encrypted)
         int loginAttempts = 0; //tracking user login attempts
         long lockUntil =0;
 
@@ -47,13 +47,13 @@ public class AuthSystem {
         }
     }
 
-
+    //this method is creating a session token for the registration part of the program
     public String startRegistrationSession(String username)
-    {
-        String sessionToken = SessionGenerator.generateSessionToken();
-        activeSessions.put(sessionToken, new SessionInfo(username));
-        return sessionToken;
-    }
+    {//open
+        String sessionToken = SessionGenerator.generateSessionToken(); //generates session token
+        activeSessions.put(sessionToken, new SessionInfo(username)); //starts the session when the user enters their name
+        return sessionToken; //returns the new encrypted session token
+    }//close
 
     /**
      * Registers a new user.
@@ -68,14 +68,14 @@ public class AuthSystem {
         if (!isSessionValid(sessionToken))
         {
             System.out.println("Invalid or Expired Session Token. Registration Failed");
-            return false;
+            return false; //ends session if token is invalid
         }
 
-        users.put(username, new User(password));
+        users.put(username, new User(password)); //creates the user with the details provided (password is hashed in app)
 
         // Save immediately after adding a user
         try {
-            storage.storeUsers(users);
+            storage.storeUsers(users); //moves the newly created user account to the .dat file
         } catch (IOException e) {
             System.out.println("Error saving user data: " + e.getMessage());
             return false;
@@ -92,19 +92,19 @@ public class AuthSystem {
      */
     public String login(String username, String password, String sessionId) {
         // Create or retrieve session tracker for this sessionId
-        LoginSession logsesh = sessions.computeIfAbsent(sessionId, k -> new LoginSession());
+        LoginSession logsesh = sessions.computeIfAbsent(sessionId, k -> new LoginSession()); //creates a session token for login
 
         // Check if session is locked (for brute-force prevention)
         if (logsesh.lockedOut()) {
             System.out.println("Too many failed attempts, try again later");
-            return null;
+            return null; //won't allow the user to login
         }
 
         // Fetch the user (maybe null)
-        User user = users.get(username);
+        User user = users.get(username); //fetches the user by name
 
         // Used to avoid timing attacks.
-        String hashToCheck = (user != null) ? user.password : DUMMY_HASH;
+        String hashToCheck = (user != null) ? user.password : DUMMY_HASH; //creates a dummby account to be pulled at the same time
         boolean authenticated = AuthUtils.verifyPassword(password, hashToCheck); //checks the password and the fake password against the verification
 
         // Check if the real user's account is locked
@@ -118,8 +118,8 @@ public class AuthSystem {
             logsesh.resetAttempts();        // reset session attempts
             user.loginAttempts = 0;         // reset user attempts
 
-            String sessionToken = SessionGenerator.generateSessionToken();
-            activeSessions.put(sessionToken, new SessionInfo(username));
+            String sessionToken = SessionGenerator.generateSessionToken(); //generates a session token for past login stage
+            activeSessions.put(sessionToken, new SessionInfo(username)); //confirms that token to be attached to that account
 
             //clarifies successful token
             if (isSessionValid(sessionToken))
@@ -139,20 +139,20 @@ public class AuthSystem {
                 System.out.println("Too many failed attempts, try again later");
             }
 
-            // Lock the real user if max attempts reached
-            if (user != null) {
+            // Lock the real user if max attempts reached prevents timing attacks since it will lock the user out too if even was not an account
+            if (user != null) {//open if
                 user.loginAttempts++; //increment the counter
                 //when login attempts reach max attempts, lock out user
-                if (user.loginAttempts >= max_login_attempts) {
-                    user.lockUntil = System.currentTimeMillis() + lock_out_time;
+                if (user.loginAttempts >= max_login_attempts) { //open if
+                    user.lockUntil = System.currentTimeMillis() + lock_out_time; //creates the lock time
                     user.loginAttempts = 0; // reset after locking
                     System.out.println("Too many failed attempts. Account locked for 1 minute");
-                }
-            }
+                } //ends if
+            } //ends if
 
             return null; // general failure
-        }
-    }
+        }//ends else
+    }//end login
 
 
     public Map<String, User> getUsers() {
@@ -165,17 +165,18 @@ public class AuthSystem {
      * Checks if a session token is valid.
      */
     public boolean isSessionValid(String sessionToken) {
-        SessionInfo sessionInfo = activeSessions.get(sessionToken);
-        if(sessionInfo == null) return false;
+        SessionInfo sessionInfo = activeSessions.get(sessionToken); //takes session token
+        if(sessionInfo == null) return false; // if there is no token return null
 
-        long current_session = System.currentTimeMillis() - sessionInfo.getCreatedAt();
+        long current_session = System.currentTimeMillis() - sessionInfo.getCreatedAt(); //tracks the session since when it is created
+        //ends session after certain time
         if (current_session > session_length)
         {
-            activeSessions.remove(sessionToken);
+            activeSessions.remove(sessionToken); //removes the token after session length is reached
             return false;
         }
 
-        return true;
+        return true; //if session token is valid allow the user to move forward
 
     }
 }
