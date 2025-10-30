@@ -19,14 +19,14 @@ public class App {
         switch (option) {
             case 1:
                 System.out.println("Please Enter your username");
-                String username = input.nextLine();
-
+                String username = input.nextLine(); //takes username
+                String sessionToken = controls.startRegistrationSession(username); //starts session and creates token
                 System.out.println("Please Enter your password");
-                String password = input.nextLine();
+                String password = input.nextLine();//takes password
 
-                String hashedPassword = AuthUtils.hash(password);
+                String hashedPassword = AuthUtils.hash(password); //encrypts the password
 
-                boolean signUp = controls.register(username, hashedPassword);
+                boolean signUp = controls.register(username, hashedPassword,sessionToken);
                 if (signUp) {
                     System.out.println("User Registered Successfully");
                     try {

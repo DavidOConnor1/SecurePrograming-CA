@@ -48,12 +48,26 @@ public class AuthSystem {
     }
 
 
+    public String startRegistrationSession(String username)
+    {
+        String sessionToken = SessionGenerator.generateSessionToken();
+        activeSessions.put(sessionToken, new SessionInfo(username));
+        return sessionToken;
+    }
+
     /**
      * Registers a new user.
      * @return true if successful, false if user exists.
      */
-    public boolean register(String username, String password) {
+    public boolean register(String username, String password, String sessionToken) {
         if (username == null || username.isEmpty() || users.containsKey(username)) {
+            return false;
+        }
+
+        //checks if session is valid before creating account
+        if (!isSessionValid(sessionToken))
+        {
+            System.out.println("Invalid or Expired Session Token. Registration Failed");
             return false;
         }
 
