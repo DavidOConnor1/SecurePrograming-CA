@@ -13,24 +13,25 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class AuthSystem {
     // In-memory "database" of users
-    private Map<String, User> users; //intializing users
+    private Map<String, User> users; //intialize users
     private Map<String, LoginSession> sessions = new ConcurrentHashMap<>(); //intializing login sessions
     private UserManager storage; //intializing storage
     public static final String DUMMY_HASH = AuthUtils.hash("dummy_password"); //intializing and defining dummy account
     private static final int max_login_attempts =3; //sets max limit for logins
     private static final long lock_out_time = 60*1000; //1minute lock
     private static final Map<String, SessionInfo> activeSessions = new HashMap<>(); // sessionToken -> username
-    private static final long session_length = 30*60*1000;
+    private static final long session_length = 30*60*1000; //a session length is 30 mins
 
     //calls the usermanager classs
     public AuthSystem(UserManager storage) {
         this.storage = storage; //intializes the storage
 
         // Load existing users at startup
-        try {
+        try {//open try
             this.users = storage.loadUsers();// pulls the users from storage
             System.out.println("Users have been successfully loaded"); //gives a message to the user to let them know users are loaded
-        } catch (IOException | ClassNotFoundException e) {
+        }//end try
+        catch (IOException | ClassNotFoundException e) {
             this.users = new HashMap<>(); //creates a new hashmap if there is no .dat file
             System.out.println("No existing users found. Starting fresh."); //notifies the user it is creating a new .dat file to store users
         }//end catch
@@ -77,7 +78,7 @@ public class AuthSystem {
         try {
             storage.storeUsers(users); //moves the newly created user account to the .dat file
         } catch (IOException e) {
-            System.out.println("Error saving user data: " + e.getMessage());
+            System.out.println("Error saving user data: " + e.getMessage()); //notifies user it could not save their account
             return false;
         }
 
@@ -164,7 +165,7 @@ public class AuthSystem {
     /**
      * Checks if a session token is valid.
      */
-    public boolean isSessionValid(String sessionToken) {
+    public boolean isSessionValid(String sessionToken) {//opens isSessionValid
         SessionInfo sessionInfo = activeSessions.get(sessionToken); //takes session token
         if(sessionInfo == null) return false; // if there is no token return null
 
@@ -178,5 +179,5 @@ public class AuthSystem {
 
         return true; //if session token is valid allow the user to move forward
 
-    }
-}
+    }//closes session is valid
+}//close class
