@@ -14,15 +14,15 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AuthSystem {
     // In-memory "database" of users
     private Map<String, User> users; //intialize users
-    private Map<String, LoginSession> sessions = new ConcurrentHashMap<>(); //intializing login sessions
-    private UserManager storage; //intializing storage
-    public static final String DUMMY_HASH = AuthUtils.hash("dummy_password"); //intializing and defining dummy account
+    private Map<String, LoginSession> sessions = new ConcurrentHashMap<>(); //tracks attempts for temp login session
+    private UserManager storage; //manage persistent storage
+    public static final String DUMMY_HASH = AuthUtils.hash("dummy_password"); //dummy account set for protection against timing attacks
     private static final int max_login_attempts =3; //sets max limit for logins
     private static final long lock_out_time = 60*1000; //1minute lock
-    private static final Map<String, SessionInfo> activeSessions = new HashMap<>(); // sessionToken -> username
+    private static final Map<String, SessionInfo> activeSessions = new HashMap<>(); // active session tokens mapped to session information
     private static final long session_length = 30*60*1000; //a session length is 30 mins
 
-    //calls the usermanager classs
+    //constructs auth system with given UserManager
     public AuthSystem(UserManager storage) {
         this.storage = storage; //intializes the storage
 
@@ -37,11 +37,12 @@ public class AuthSystem {
         }//end catch
     }//end method
 
+    //represents an registered account
     static class User implements Serializable {
         private static final long serialVersionUID = 1L; //unique id for serialization for storing the accounts in the .dat file
         String password; //formats the user class to have a password (which is encrypted)
         int loginAttempts = 0; //tracking user login attempts
-        long lockUntil =0;
+        long lockUntil =0; //timestamp until which the account is locked 0 = not locked
 
         User(String password) {
             this.password = password;
@@ -49,6 +50,7 @@ public class AuthSystem {
     }
 
     //this method is creating a session token for the registration part of the program
+    //generates and stores temp session token to be validated
     public String startRegistrationSession(String username)
     {//open
         String sessionToken = SessionGenerator.generateSessionToken(); //generates session token
@@ -74,9 +76,9 @@ public class AuthSystem {
 
         users.put(username, new User(password)); //creates the user with the details provided (password is hashed in app)
 
-        // Save immediately after adding a user
+        // Save the updated user database
         try {
-            storage.storeUsers(users); //moves the newly created user account to the .dat file
+            storage.storeUsers(users);
         } catch (IOException e) {
             System.out.println("Error saving user data: " + e.getMessage()); //notifies user it could not save their account
             return false;
@@ -104,23 +106,25 @@ public class AuthSystem {
         // Fetch the user (maybe null)
         User user = users.get(username); //fetches the user by name
 
-        // Used to avoid timing attacks.
+        // Compute hash (even for invalid accounts) to mitigate against timing attacks
         String hashToCheck = (user != null) ? user.password : DUMMY_HASH; //creates a dummby account to be pulled at the same time
         boolean authenticated = AuthUtils.verifyPassword(password, hashToCheck); //checks the password and the fake password against the verification
 
-        // Check if the real user's account is locked
+        // if account is temporarily locked deny login
         if (user != null && System.currentTimeMillis() < user.lockUntil) {
             System.out.println("Account temporarily locked. Come back later");
             return null;
         }
 
+        // Successful login
         if (authenticated && user != null) {
-            // Successful login for real user
+
             logsesh.resetAttempts();        // reset session attempts
             user.loginAttempts = 0;         // reset user attempts
 
-            String sessionToken = SessionGenerator.generateSessionToken(); //generates a session token for past login stage
-            activeSessions.put(sessionToken, new SessionInfo(username)); //confirms that token to be attached to that account
+            //generate valid user session token
+            String sessionToken = SessionGenerator.generateSessionToken();
+            activeSessions.put(sessionToken, new SessionInfo(username));
 
             //clarifies successful token
             if (isSessionValid(sessionToken))
@@ -131,7 +135,7 @@ public class AuthSystem {
 
             return sessionToken;
         } else {
-            // Failed login (real or dummy)
+            // Failed login attempt
             logsesh.incrementFailedAttempts();
 
             // Lock session if max attempts reached
@@ -155,7 +159,7 @@ public class AuthSystem {
         }//ends else
     }//end login
 
-
+    //returns all users currently loaded in memory
     public Map<String, User> getUsers() {
         return users;
     }
