@@ -4,17 +4,17 @@ import java.io.IOException;
 import java.util.Scanner;
 
 public class App {
-    private static UserManager storage = new UserManager("db.dat");
-    private static AuthSystem controls = new AuthSystem(storage);
-    private static Scanner input = new Scanner(System.in);
+    private static UserManager storage = new UserManager("db.dat"); //manages user data persistence
+    private static AuthSystem controls = new AuthSystem(storage);   //handles registration, login and session control
+    private static Scanner input = new Scanner(System.in); //reading input
 
     public static void main(String[] args)
     {//open main
 
-        System.out.println("Select from the following choices \n1.Sign Up \n2.Login");
+        System.out.println("Select from the following choices \n1.Sign Up \n2.Login"); //presents choices
 
         int option = input.nextInt();
-        input.nextLine(); // take input
+        input.nextLine(); //consumes leftover new line before reading next input
 
         switch (option) {
             case 1:
@@ -24,25 +24,32 @@ public class App {
                 System.out.println("Please Enter your password");
                 String password = input.nextLine();//takes password
 
-                String hashedPassword = AuthUtils.hash(password); //encrypts the password
+                String hashedPassword = AuthUtils.hash(password); //hashes the password
 
-                boolean signUp = controls.register(username, hashedPassword,sessionToken);
-                if (signUp) {
-                    System.out.println("User Registered Successfully");
-                    try {
-                        storage.storeUsers(controls.getUsers());
-                    } catch (IOException e) {
-                        System.out.println("Error Saving User data"+e.getMessage());
-                    }
-                } else {
-                    System.out.println("Registration failed (username already in use)");
-                }
-                break;
+                boolean signUp = controls.register(username, hashedPassword,sessionToken); //attempt to register new user
+
+                    if (signUp) { //open if
+                        System.out.println("User Registered Successfully");
+
+                        //save user data to disk
+                        try {//open try
+                            storage.storeUsers(controls.getUsers());
+
+                        }/*close try*/ catch (IOException e) {//open catch
+                            System.out.println("Error Saving User data" + e.getMessage());
+                        }//close catch
+                    } else {//open else
+                        System.out.println("Registration failed (username already in use)");
+                    }//close else
+
+                break; //end switch
 
             case 2:
 
+                //user login flow
                 System.out.println("Please Enter Your Username"); //prompts user to enter their username
                 String name = input.nextLine(); //reads input from user
+
 
                 String tempSessionId = "Temp_"+System.currentTimeMillis(); //creating temp login session
                 boolean loggedIn = false; //set to false as default
@@ -57,7 +64,7 @@ public class App {
                     String pass = input.nextLine(); //receives input for password
 
 
-                    //Takes required details
+                    //attempt login with provided details
                     String session = controls.login(name, pass,tempSessionId);
 
                     if (session != null) {//open if
@@ -72,6 +79,7 @@ public class App {
                 break;
 
             default:
+                //if the user selects anything beside 1 or 2
                 System.out.println("Invalid option");
         }
     }
